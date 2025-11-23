@@ -1,0 +1,291 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { VideoUpload, VideoUploadRef } from '@/components/video/video-upload';
+import { coursesAPI, userAPI } from '@/lib/api';
+import { Loader2, Plus, Film } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+interface CreateLessonDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
+}
+
+interface InstructorCourse {
+  id: string;
+  title: string;
+}
+
+export function CreateLessonDialog({
+  open,
+  onOpenChange,
+  onSuccess
+}: CreateLessonDialogProps) {
+  const videoUploadRef = useRef<VideoUploadRef>(null);
+  const [loading, setLoading] = useState(false);
+  const [courses, setCourses] = useState<InstructorCourse[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    content: ''
+  });
+
+  useEffect(() => {
+    if (open) {
+      loadCourses();
+    }
+  }, [open]);
+
+  const loadCourses = async () => {
+    try {
+      const teachingData = await userAPI.getTeaching();
+      const coursesData = teachingData.courses?.map((course: any) => ({
+        id: course.id,
+        title: course.title,
+      })) || [];
+      setCourses(coursesData);
+
+      setSelectedCourseId(coursesData[0].id);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast.error('Erro ao carregar cursos');
+    }
+  };
+
+  const handleCreateLesson = async () => {
+    if (!selectedCourseId) {
+      toast.error('Selecione um curso primeiro');
+      return;
+    }
+
+    if (!formData.title.trim()) {
+      toast.error('Título é obrigatório');
+      return;
+    }
+
+    if (!videoUploadRef.current?.hasFile()) {
+      toast.error('Por favor, selecione um arquivo de vídeo');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Pega a duração do vídeo em minutos (com decimais para precisão)
+      const videoDuration = videoUploadRef.current?.getVideoDurationMinutes();
+
+      // Primeiro cria a lição sem o vídeo
+      const { lesson } = await coursesAPI.createLesson(selectedCourseId, {
+        ...formData,
+        duration_minutes: videoDuration || undefined,
+      });
+
+      // Define o lessonId no componente de upload
+      videoUploadRef.current?.setLessonId(lesson.id);
+
+      // Depois faz o upload do vídeo com o lessonId
+      const uploadResult = await videoUploadRef.current?.startUpload();
+
+      if (!uploadResult) {
+        toast.error('Erro ao fazer upload do vídeo');
+        return;
+      }
+
+      // Atualiza a lesson com o videoId imediatamente
+      // (O webhook do Cloudflare atualizará a duration_minutes quando processar)
+      await coursesAPI.updateLesson(selectedCourseId, lesson.id, {
+        video_url: uploadResult.videoId,
+      });
+
+      toast.success('Lição criada! O vídeo será processado em alguns instantes.');
+      handleClose();
+    } catch (error: any) {
+      console.error('Error creating lesson:', error);
+      toast.error(
+        error.response?.data?.error || 'Erro ao criar lição. Tente novamente.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleClose = () => {
+    // Reset state
+    videoUploadRef.current?.reset();
+    setFormData({
+      title: '',
+      description: '',
+      content: ''
+    });
+    if (courses.length > 0) {
+      setSelectedCourseId(courses[0].id);
+    }
+
+    onOpenChange(false);
+
+    if (onSuccess) {
+      onSuccess();
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Film className="h-5 w-5" />
+            Criar Nova Lição
+          </DialogTitle>
+          <DialogDescription>
+            'Selecione o curso, '
+            Escolha o vídeo e preencha as informações. O upload será feito ao clicar em criar.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Course Selector */}
+          <div className="space-y-2">
+            <label htmlFor="course-select" className="text-sm font-medium">
+              Selecione o Curso *
+            </label>
+            <select
+              id="course-select"
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(e.target.value)}
+              disabled={loading}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Selecione um curso...</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Video Upload Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">
+                '1'. Selecione o Vídeo *
+              </label>
+            </div>
+            <VideoUpload
+              ref={videoUploadRef}
+              courseId={selectedCourseId}
+              manualUpload={true}
+            />
+            <p className="text-xs text-muted-foreground">
+              O upload será feito automaticamente ao criar a lição
+            </p>
+          </div>
+
+          {/* Lesson Info Section */}
+          <div className="space-y-4">
+            <label className="text-sm font-medium">
+              '2'. Informações da Lição *
+            </label>
+
+            {/* Title */}
+            <div className="grid gap-2">
+              <label htmlFor="title" className="text-sm font-medium text-muted-foreground">
+                Título *
+              </label>
+              <Input
+                id="title"
+                name="title"
+                placeholder="Ex: Introdução ao Ethereum"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                disabled={loading}
+              />
+            </div>
+
+            {/* Description */}
+            <div className="grid gap-2">
+              <label htmlFor="description" className="text-sm font-medium text-muted-foreground">
+                Descrição Breve
+              </label>
+              <Input
+                id="description"
+                name="description"
+                placeholder="Resumo da lição..."
+                value={formData.description}
+                onChange={handleChange}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Content */}
+            <div className="grid gap-2">
+              <label htmlFor="content" className="text-sm font-medium text-muted-foreground">
+                Conteúdo / Notas da Aula (Opcional)
+              </label>
+              <textarea
+                id="content"
+                name="content"
+                placeholder="Material complementar, links, código, etc..."
+                value={formData.content}
+                onChange={handleChange}
+                disabled={loading}
+                rows={6}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Você pode usar HTML básico para formatação
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={loading}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleCreateLesson}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Fazendo Upload e Criando...
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Fazer Upload e Criar Lição
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
