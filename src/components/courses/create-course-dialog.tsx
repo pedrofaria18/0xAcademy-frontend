@@ -57,7 +57,6 @@ export function CreateCourseDialog({
       title: '',
       description: '',
       category: 'Blockchain',
-      price_usd: '0',
       thumbnail_url: '',
       is_published: false,
     },
@@ -73,7 +72,6 @@ export function CreateCourseDialog({
         category: data.category,
         level: data.level,
         tags: data.tags,
-        price_usd: parseFloat(data.price_usd) || 0,
         thumbnail_url: data.thumbnail_url?.trim() === '' ? undefined : data.thumbnail_url?.trim(),
         is_published: data.is_published || false,
       };
@@ -111,8 +109,7 @@ export function CreateCourseDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {/* Title */}
+          <div className="grid gap-4 py-4">       
             <div className="grid gap-2">
               <label htmlFor="title" className="text-sm font-medium">
                 Título do Curso *
@@ -128,7 +125,6 @@ export function CreateCourseDialog({
               )}
             </div>
 
-            {/* Description */}
             <div className="grid gap-2">
               <label htmlFor="description" className="text-sm font-medium">
                 Descrição *
@@ -146,7 +142,6 @@ export function CreateCourseDialog({
               )}
             </div>
 
-            {/* Category */}
             <div className="grid gap-2">
               <label htmlFor="category" className="text-sm font-medium">
                 Categoria
@@ -168,27 +163,6 @@ export function CreateCourseDialog({
               )}
             </div>
 
-            {/* Price */}
-            <div className="grid gap-2">
-              <label htmlFor="price_usd" className="text-sm font-medium">
-                Preço (USD)
-              </label>
-              <Input
-                id="price_usd"
-                type="text"
-                placeholder="0.00"
-                disabled={isSubmitting}
-                {...register('price_usd')}
-              />
-              {errors.price_usd && (
-                <p className="text-sm text-destructive">{errors.price_usd.message}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Deixe em 0 para criar um curso gratuito
-              </p>
-            </div>
-
-            {/* Thumbnail URL */}
             <div className="grid gap-2">
               <label htmlFor="thumbnail_url" className="text-sm font-medium">
                 URL da Thumbnail (Opcional)
@@ -203,12 +177,8 @@ export function CreateCourseDialog({
               {errors.thumbnail_url && (
                 <p className="text-sm text-destructive">{errors.thumbnail_url.message}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Você pode adicionar uma imagem depois
-              </p>
             </div>
 
-            {/* Publish Status */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">

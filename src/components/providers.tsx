@@ -7,22 +7,14 @@ import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowki
 import { ThemeProvider } from 'next-themes';
 import { wagmiConfig } from '@/config/wagmi';
 
-/**
- * Web3 + UI Providers
- * Handles Wagmi, TanStack Query, RainbowKit, and Theme configuration
- *
- * @important QueryClient must be instantiated inside component to avoid
- * sharing state between requests in SSR (Next.js App Router requirement)
- */
 export function Providers({ children }: { children: ReactNode }) {
-  // Create QueryClient inside component to avoid SSR issues
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
-            gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+            staleTime: 60 * 1000,
+            gcTime: 10 * 60 * 1000,
             refetchOnWindowFocus: false,
             retry: 1,
           },
@@ -30,7 +22,6 @@ export function Providers({ children }: { children: ReactNode }) {
       })
   );
 
-  // Prevent hydration mismatch from wallet extensions
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -64,7 +55,6 @@ export function Providers({ children }: { children: ReactNode }) {
               {children}
             </RainbowKitProvider>
           ) : (
-            // Render children without RainbowKit during SSR
             children
           )}
         </ThemeProvider>

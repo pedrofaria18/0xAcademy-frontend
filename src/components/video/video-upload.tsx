@@ -37,7 +37,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
   const [lessonId, setLessonIdState] = useState<string | undefined>(initialLessonId);
   const [videoDurationSeconds, setVideoDurationSeconds] = useState<number | null>(null);
 
-  // Helper para separar nome e extensão
   const getFileNameParts = (filename: string) => {
     const lastDotIndex = filename.lastIndexOf('.');
     if (lastDotIndex === -1) return { name: filename, ext: '' };
@@ -281,9 +280,7 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
           </label>
         ) : (
           <div className="space-y-4 w-full max-w-full overflow-hidden">
-            {/* File Info */}
             <div className="flex items-start gap-3 w-full max-w-full">
-              {/* Icon Wrapper */}
               <div className="rounded-lg bg-primary/10 p-2 flex-shrink-0">
                 {status === 'success' && (
                   <CheckCircle className="h-5 w-5 text-green-500" />
@@ -296,7 +293,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
                 )}
               </div>
 
-              {/* Text Info Wrapper - A mágica do Grid acontece aqui */}
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 w-full" title={file.name}>
                   <span className="truncate font-medium text-sm block">
@@ -306,7 +302,7 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
                     {getFileNameParts(file.name).ext}
                   </span>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground truncate mt-0.5">
                   {formatFileSize(file.size)}
                   {videoDurationSeconds && ` • ${formatDuration(videoDurationSeconds)}`}
@@ -314,7 +310,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               </div>
             </div>
 
-            {/* Progress Bar */}
             {status === 'uploading' && (
               <div className="space-y-2">
                 <Progress value={progress} className="h-2" />
@@ -324,7 +319,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               </div>
             )}
 
-            {/* Processing Status */}
             {status === 'processing' && (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -332,7 +326,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               </div>
             )}
 
-            {/* Action Buttons */}
             {!manualUpload && (
               <div className="flex gap-2 justify-center pt-2">
                 {status === 'idle' && (
@@ -380,7 +373,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
         )}
       </div>
 
-      {/* Status Messages */}
       {status === 'success' && (
         <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
           <div className="flex items-start gap-3">

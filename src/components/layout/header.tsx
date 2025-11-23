@@ -26,10 +26,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-/**
- * Navigation Items - Static Configuration
- * Moved outside component to prevent recreation on every render
- */
 interface NavItem {
   href: string;
   label: string;
@@ -42,17 +38,12 @@ const NAV_ITEMS: readonly NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: GraduationCap, authRequired: true },
 ] as const;
 
-/**
- * Header Component
- * Responsive navigation with Web3 authentication and theme toggle
- */
 export function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, handleLogout } = useWeb3Auth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
-  // Memoized callbacks to prevent re-renders
   const toggleTheme = useCallback(() => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   }, [theme, setTheme]);
@@ -74,7 +65,6 @@ export function Header() {
             <span className="hidden font-bold sm:inline-block">0xAcademy</span>
           </Link>
 
-          {/* Desktop Navigation */}
           <nav
             className="hidden md:flex items-center space-x-6 text-sm font-medium"
             aria-label="Main navigation"
@@ -86,9 +76,8 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`transition-colors hover:text-foreground/80 ${
-                    isActive ? 'text-foreground' : 'text-foreground/60'
-                  }`}
+                  className={`transition-colors hover:text-foreground/80 ${isActive ? 'text-foreground' : 'text-foreground/60'
+                    }`}
                   aria-current={isActive ? 'page' : undefined}
                 >
                   {item.label}
@@ -99,7 +88,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Theme Toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -111,7 +99,6 @@ export function Header() {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Desktop Auth */}
           <div className="hidden md:flex items-center space-x-4">
             <ConnectButton showBalance={false} />
 
@@ -145,7 +132,6 @@ export function Header() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
           <Button
             variant="ghost"
             size="icon"
@@ -163,7 +149,6 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t">
           <nav className="flex flex-col space-y-3 p-4" aria-label="Mobile navigation">

@@ -355,16 +355,6 @@ export default function CourseDetailPage() {
             <div className="lg:col-span-1">
               <Card className="sticky top-20">
                 <CardContent className="pt-6 space-y-6">
-                  {/* Price */}
-                  <div className="text-center">
-                    <div className="text-4xl font-bold mb-2">
-                      {course.price_usd ? `$${course.price_usd.toFixed(2)}` : 'Gratuito'}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Acesso vitalício
-                    </p>
-                  </div>
-
                   {/* Enroll Button */}
                   {course.is_enrolled ? (
                     <Button

@@ -1,15 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Form Validation Schemas
- * These schemas match the backend validation exactly
- * @see backend/src/routes/courses.routes.ts
- */
-
-/**
- * Course Creation Schema
- * Matches: createCourseSchema from backend
- */
 export const createCourseSchema = z.object({
   title: z
     .string()
@@ -18,10 +8,6 @@ export const createCourseSchema = z.object({
   description: z
     .string()
     .min(10, 'Descrição deve ter pelo menos 10 caracteres'),
-  price_usd: z
-    .number()
-    .min(0, 'Preço não pode ser negativo')
-    .optional(),
   thumbnail_url: z
     .string()
     .url('URL inválida')
@@ -37,25 +23,17 @@ export const createCourseSchema = z.object({
 
 export type CreateCourseData = z.infer<typeof createCourseSchema>;
 
-/**
- * Course Update Schema
- * Partial version of createCourseSchema
- */
 export const updateCourseSchema = createCourseSchema.partial();
 
 export type UpdateCourseData = z.infer<typeof updateCourseSchema>;
 
-/**
- * Lesson Creation Schema
- * Matches: createLessonSchema from backend
- */
 export const createLessonSchema = z.object({
   title: z
     .string()
     .min(3, 'Título deve ter pelo menos 3 caracteres')
     .max(200, 'Título não pode ter mais de 200 caracteres'),
   description: z.string().optional(),
-  video_url: z.string().optional(), // Cloudflare video ID
+  video_url: z.string().optional(),
   content: z.string().optional(),
   order: z
     .number()
@@ -71,18 +49,10 @@ export const createLessonSchema = z.object({
 
 export type CreateLessonData = z.infer<typeof createLessonSchema>;
 
-/**
- * Lesson Update Schema
- * Partial version of createLessonSchema
- */
 export const updateLessonSchema = createLessonSchema.partial();
 
 export type UpdateLessonData = z.infer<typeof updateLessonSchema>;
 
-/**
- * Form data for create-course-dialog
- * Simple validation without transforms (RHF compatible)
- */
 export const createCourseFormSchema = z.object({
   title: z
     .string()
@@ -91,7 +61,6 @@ export const createCourseFormSchema = z.object({
   description: z
     .string()
     .min(10, 'Descrição deve ter pelo menos 10 caracteres'),
-  price_usd: z.string(),
   thumbnail_url: z.string().optional(),
   category: z.string().optional(),
   level: z
@@ -103,10 +72,6 @@ export const createCourseFormSchema = z.object({
 
 export type CreateCourseFormData = z.infer<typeof createCourseFormSchema>;
 
-/**
- * Form data for create-lesson-dialog
- * Extends the create schema with UI-specific fields
- */
 export const createLessonFormSchema = z.object({
   title: z
     .string()
@@ -118,9 +83,6 @@ export const createLessonFormSchema = z.object({
 
 export type CreateLessonFormData = z.infer<typeof createLessonFormSchema>;
 
-/**
- * Form data for edit-lesson-dialog
- */
 export const editLessonFormSchema = createLessonFormSchema;
 
 export type EditLessonFormData = z.infer<typeof editLessonFormSchema>;

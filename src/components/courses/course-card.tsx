@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatAddress, formatPrice } from '@/lib/utils';
+import { formatAddress } from '@/lib/utils';
 import { Users } from 'lucide-react';
 import type { Course } from '@/types/api';
 
@@ -11,17 +11,8 @@ interface CourseCardProps {
   course: Course;
 }
 
-/**
- * Course Card Component
- * Displays course information in a card format
- *
- * @important Memoized to prevent re-renders when parent updates
- * Only re-renders when course data changes
- */
 function CourseCardComponent({ course }: CourseCardProps) {
   const enrollmentCount = course._count?.count || 0;
-  const hasPrice = course.price_usd !== undefined && course.price_usd > 0;
-  const isFree = course.price_usd === 0;
 
   return (
     <Link href={`/courses/${course.id}`} className="block h-full">
@@ -41,9 +32,6 @@ function CourseCardComponent({ course }: CourseCardProps) {
               <div className="flex items-center justify-center h-full">
                 <span className="text-muted-foreground text-sm">Sem imagem</span>
               </div>
-            )}
-            {isFree && (
-              <Badge className="absolute top-2 right-2">Grátis</Badge>
             )}
           </div>
         </CardHeader>
@@ -85,23 +73,13 @@ function CourseCardComponent({ course }: CourseCardProps) {
             <Users className="h-4 w-4" />
             <span>{enrollmentCount} alunos</span>
           </span>
-
-          {hasPrice && course.price_usd && (
-            <span className="font-semibold text-primary">
-              {formatPrice(course.price_usd)}
-            </span>
-          )}
         </CardFooter>
       </Card>
     </Link>
   );
 }
 
-/**
- * Memoized CourseCard - Only re-renders when course.id changes
- */
 export const CourseCard = memo(CourseCardComponent, (prevProps, nextProps) => {
-  // Custom comparison: only re-render if course ID or key fields change
   return (
     prevProps.course.id === nextProps.course.id &&
     prevProps.course.title === nextProps.course.title &&

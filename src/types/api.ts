@@ -37,7 +37,6 @@ export interface Course {
   id: string;
   title: string;
   description: string;
-  price_usd?: number;
   thumbnail_url?: string;
   category?: string;
   level?: 'beginner' | 'intermediate' | 'advanced';

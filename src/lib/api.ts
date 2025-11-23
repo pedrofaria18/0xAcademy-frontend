@@ -28,10 +28,8 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Read from Zustand persist storage (0xacademy-auth key)
     const authStorage = localStorage.getItem('0xacademy-auth');
     if (authStorage) {
       try {
@@ -55,7 +53,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear Zustand persist storage on unauthorized
       localStorage.removeItem('0xacademy-auth');
       window.location.href = '/';
       toast.error('Sessão expirada. Por favor, faça login novamente.');
@@ -68,7 +65,6 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API calls
 export const authAPI = {
   getNonce: async (address: string): Promise<NonceResponse> => {
     const response = await api.post<NonceResponse>('/auth/nonce', { address });
@@ -87,12 +83,9 @@ export const authAPI = {
 
   logout: async (): Promise<void> => {
     await api.post('/auth/logout');
-    // Zustand persist will handle storage cleanup via store.logout()
-    // No need to manually remove here as it would conflict with Zustand's persistence
   },
 };
 
-// Courses API calls
 export const coursesAPI = {
   list: async (params?: { page?: number; limit?: number; category?: string; search?: string }): Promise<CoursesListResponse> => {
     const response = await api.get<CoursesListResponse>('/courses', { params });
@@ -155,7 +148,6 @@ export const coursesAPI = {
   },
 };
 
-// User API calls
 export const userAPI = {
   getProfile: async (): Promise<{ user: User }> => {
     const response = await api.get<{ user: User }>('/user/profile');
@@ -198,7 +190,6 @@ export const userAPI = {
   },
 };
 
-// Video API calls
 export const videoAPI = {
   getUploadUrl: async (courseId: string, lessonId?: string): Promise<UploadUrlResponse> => {
     const response = await api.post<UploadUrlResponse>('/videos/upload-url', { courseId, lessonId });

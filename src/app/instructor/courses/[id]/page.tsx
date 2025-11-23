@@ -6,10 +6,9 @@ import dynamic from 'next/dynamic';
 import { Header } from '@/components/layout/header';
 import { useWeb3Auth } from '@/hooks/useWeb3Auth';
 import { coursesAPI } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   BookOpen,
   Save,
@@ -36,7 +35,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { Course, Lesson } from '@/types/api';
 
-// Helper function outside component to avoid recreation on every render
 const formatDuration = (minutes: number | null | undefined): string => {
   if (!minutes) return '0:00';
   const totalSeconds = Math.round(minutes * 60);
@@ -45,10 +43,6 @@ const formatDuration = (minutes: number | null | undefined): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-/**
- * Lazy load dialogs for better performance
- * Only loaded when user opens them
- */
 const CreateLessonDialog = dynamic(
   () => import('@/components/courses/create-lesson-dialog').then((mod) => ({ default: mod.CreateLessonDialog })),
   {
@@ -87,17 +81,14 @@ export default function EditCoursePage() {
   const [courseData, setCourseData] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
 
-  // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: 'Blockchain',
-    price_usd: '0',
     thumbnail_url: '',
     is_published: false
   });
 
-  // Dialog states
   const [createLessonOpen, setCreateLessonOpen] = useState(false);
   const [editLessonOpen, setEditLessonOpen] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string>('');
@@ -109,10 +100,8 @@ export default function EditCoursePage() {
     try {
       setLoading(true);
 
-      // Load course details
       const { course } = await coursesAPI.get(courseId);
 
-      // Verify if user is the instructor
       if (course.instructor_id !== user?.id) {
         toast.error('Você não tem permissão para editar este curso');
         router.push('/instructor');
@@ -124,12 +113,10 @@ export default function EditCoursePage() {
         title: course.title,
         description: course.description || '',
         category: course.category || 'Blockchain',
-        price_usd: String(course.price_usd || 0),
         thumbnail_url: course.thumbnail_url || '',
         is_published: course.is_published || false
       });
 
-      // Load lessons
       try {
         const { lessons: lessonsData } = await coursesAPI.getLessons(courseId);
         setLessons(lessonsData.sort((a: Lesson, b: Lesson) => a.order - b.order));
@@ -177,7 +164,6 @@ export default function EditCoursePage() {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        price_usd: parseFloat(formData.price_usd) || 0,
         thumbnail_url: formData.thumbnail_url.trim() === '' ? undefined : formData.thumbnail_url.trim(),
         is_published: formData.is_published
       };
@@ -293,7 +279,7 @@ export default function EditCoursePage() {
           <div className="text-center">
             <h1 className="text-3xl font-bold">Curso não encontrado</h1>
             <Button className="mt-4" onClick={() => router.push('/instructor')}>
-              Voltar para Dashboard
+              Voltar para área do instrutor
             </Button>
           </div>
         </main>
@@ -306,21 +292,18 @@ export default function EditCoursePage() {
       <Header />
       <main className="flex-1">
         <div className="container py-8">
-          {/* Header */}
           <div className="mb-8">
-            <Button
-              variant="ghost"
-              size="sm"
+            <span
               onClick={() => router.push('/instructor')}
-              className="mb-4"
+              className="mb-4 px-0 flex items-center justify-start cursor-pointer"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar para Dashboard
-            </Button>
+              Voltar para área do instrutor
+            </span>
 
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-3xl font-bold mb-2">Editar Curso</h1>
+                <h1 className="text-3xl font-bold mb-2">Curso {formData.title}</h1>
                 <p className="text-muted-foreground">
                   Gerencie as informações e conteúdo do seu curso
                 </p>
@@ -341,7 +324,7 @@ export default function EditCoursePage() {
                   {formData.is_published ? (
                     <>
                       <EyeOff className="mr-2 h-4 w-4" />
-                      Despublicar
+                      Salvar como rascunho
                     </>
                   ) : (
                     <>
@@ -355,19 +338,14 @@ export default function EditCoursePage() {
           </div>
 
           <div className="grid gap-6">
-            {/* Course Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Informações do Curso</CardTitle>
-                <CardDescription>
-                  Atualize as informações básicas do seu curso
-                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Title */}
                 <div className="grid gap-2">
                   <label htmlFor="title" className="text-sm font-medium">
-                    Título do Curso *
+                    Título *
                   </label>
                   <Input
                     id="title"
@@ -380,7 +358,6 @@ export default function EditCoursePage() {
                   />
                 </div>
 
-                {/* Description */}
                 <div className="grid gap-2">
                   <label htmlFor="description" className="text-sm font-medium">
                     Descrição *
@@ -399,7 +376,6 @@ export default function EditCoursePage() {
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  {/* Category */}
                   <div className="grid gap-2">
                     <label htmlFor="category" className="text-sm font-medium">
                       Categoria
@@ -412,67 +388,40 @@ export default function EditCoursePage() {
                       disabled={saving}
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
+                      {CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* Price */}
                   <div className="grid gap-2">
-                    <label htmlFor="price_usd" className="text-sm font-medium">
-                      Preço (USD)
+                    <label htmlFor="thumbnail_url" className="text-sm font-medium">
+                      URL da Thumbnail
                     </label>
                     <Input
-                      id="price_usd"
-                      name="price_usd"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={formData.price_usd}
+                      id="thumbnail_url"
+                      name="thumbnail_url"
+                      type="url"
+                      placeholder="https://..."
+                      value={formData.thumbnail_url}
                       onChange={handleChange}
                       disabled={saving}
                     />
+                    {formData.thumbnail_url && (
+                      <div className="mt-2">
+                        <img
+                          src={formData.thumbnail_url}
+                          alt="Thumbnail preview"
+                          className="w-64 h-36 object-cover rounded-lg border"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                {/* Thumbnail URL */}
-                <div className="grid gap-2">
-                  <label htmlFor="thumbnail_url" className="text-sm font-medium">
-                    URL da Thumbnail
-                  </label>
-                  <Input
-                    id="thumbnail_url"
-                    name="thumbnail_url"
-                    type="url"
-                    placeholder="https://..."
-                    value={formData.thumbnail_url}
-                    onChange={handleChange}
-                    disabled={saving}
-                  />
-                  {formData.thumbnail_url && (
-                    <div className="mt-2">
-                      <img
-                        src={formData.thumbnail_url}
-                        alt="Thumbnail preview"
-                        className="w-64 h-36 object-cover rounded-lg border"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Status Badge */}
-                <div className="flex items-center gap-2 pt-4">
-                  <span className="text-sm font-medium">Status:</span>
-                  <Badge variant={formData.is_published ? 'default' : 'secondary'}>
-                    {formData.is_published ? 'Publicado' : 'Rascunho'}
-                  </Badge>
                 </div>
 
                 <div className="flex justify-end pt-4">
@@ -493,15 +442,11 @@ export default function EditCoursePage() {
               </CardContent>
             </Card>
 
-            {/* Lessons Management */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Lições do Curso</CardTitle>
-                    <CardDescription className="mt-2">
-                      Gerencie o conteúdo das aulas do seu curso
-                    </CardDescription>
                   </div>
                   <Button onClick={() => setCreateLessonOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -574,15 +519,8 @@ export default function EditCoursePage() {
               </CardContent>
             </Card>
 
-            {/* Danger Zone */}
             <Card className="border-destructive">
-              <CardHeader>
-                <CardTitle className="text-destructive">Zona de Perigo</CardTitle>
-                <CardDescription>
-                  Ações irreversíveis que afetam seu curso
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+              <CardContent className='mt-6'>
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-medium mb-1">Deletar Curso</h4>
@@ -604,7 +542,6 @@ export default function EditCoursePage() {
         </div>
       </main>
 
-      {/* Dialogs */}
       <CreateLessonDialog
         open={createLessonOpen}
         onOpenChange={setCreateLessonOpen}
@@ -625,7 +562,6 @@ export default function EditCoursePage() {
         />
       )}
 
-      {/* Delete Course Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -647,7 +583,6 @@ export default function EditCoursePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Lesson Dialog */}
       <AlertDialog open={deleteLessonDialogOpen} onOpenChange={setDeleteLessonDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

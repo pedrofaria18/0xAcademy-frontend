@@ -8,7 +8,6 @@ import { useWeb3Auth } from '@/hooks/useWeb3Auth';
 import { userAPI, coursesAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 import {
   BookOpen,
@@ -18,13 +17,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// Static skeleton items to avoid array recreation
 const SKELETON_ITEMS = Array.from({ length: 3 }, (_, i) => i);
 
-/**
- * Lazy load CreateCourseDialog for better performance
- * Only loaded when user clicks "Criar Novo Curso"
- */
 const CreateCourseDialog = dynamic(
   () => import('@/components/courses/create-course-dialog').then((mod) => ({ default: mod.CreateCourseDialog })),
   {
@@ -65,7 +59,7 @@ export default function InstructorPage() {
         status: course.is_published ? 'published' as const : 'draft' as const,
         students_enrolled: course._count?.[0]?.count || 0,
         total_lessons: course._lessons?.[0]?.count || 0,
-        revenue: (course._count?.[0]?.count || 0) * (course.price_usd || 0),
+        revenue: (course._count?.[0]?.count || 0),
         created_at: course.created_at,
       })) || [];
 
@@ -140,7 +134,6 @@ export default function InstructorPage() {
       <Header />
       <main className="flex-1">
         <div className="container py-8">
-          {/* Header */}
           <div className="mb-24 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold">Área do Instrutor</h1>
@@ -154,7 +147,6 @@ export default function InstructorPage() {
             </Button>
           </div>
 
-          {/* Courses List */}
           <div>
             <h2 className="text-2xl font-bold mb-4">Meus Cursos</h2>
 
@@ -188,8 +180,7 @@ export default function InstructorPage() {
                 {courses.map((course) => (
                   <Card key={course.id}>
                     <CardContent className="p-6">
-                      <div className="flex gap-6">
-                        {/* Thumbnail */}
+                      <div className="flex gap-6 cursor-pointer" onClick={() => router.push(`/instructor/courses/${course.id}`)}>
                         <div className="flex-shrink-0">
                           {course.thumbnail_url ? (
                             <img
@@ -204,7 +195,6 @@ export default function InstructorPage() {
                           )}
                         </div>
 
-                        {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-4 mb-2">
                             <div>
@@ -216,16 +206,6 @@ export default function InstructorPage() {
                                   {course.total_lessons} aula{course.total_lessons > 1 && 's'}
                                 </span>
                               </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => router.push(`/instructor/courses/${course.id}/edit`)}
-                                title="Editar curso"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
                             </div>
                           </div>
                         </div>
@@ -239,7 +219,6 @@ export default function InstructorPage() {
         </div>
       </main>
 
-      {/* Modals */}
       <CreateCourseDialog
         open={createCourseOpen}
         onOpenChange={setCreateCourseOpen}

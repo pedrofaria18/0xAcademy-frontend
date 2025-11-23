@@ -90,10 +90,8 @@ export function CreateLessonDialog({
     try {
       setLoading(true);
 
-      // Pega a duração do vídeo em minutos (com decimais para precisão)
       const videoDuration = videoUploadRef.current?.getVideoDurationMinutes();
 
-      // Primeiro cria a lição sem o vídeo
       const { lesson } = await coursesAPI.createLesson(selectedCourseId, {
         title: data.title,
         description: data.description || undefined,
@@ -101,10 +99,8 @@ export function CreateLessonDialog({
         duration_minutes: videoDuration || undefined,
       });
 
-      // Define o lessonId no componente de upload
       videoUploadRef.current?.setLessonId(lesson.id);
 
-      // Depois faz o upload do vídeo com o lessonId
       const uploadResult = await videoUploadRef.current?.startUpload();
 
       if (!uploadResult) {
@@ -112,8 +108,6 @@ export function CreateLessonDialog({
         return;
       }
 
-      // Atualiza a lesson com o videoId imediatamente
-      // (O webhook do Cloudflare atualizará a duration_minutes quando processar)
       await coursesAPI.updateLesson(selectedCourseId, lesson.id, {
         video_url: uploadResult.videoId,
       });
@@ -132,7 +126,6 @@ export function CreateLessonDialog({
   };
 
   const handleClose = () => {
-    // Reset state
     videoUploadRef.current?.reset();
     reset();
     if (courses.length > 0) {
@@ -161,104 +154,98 @@ export function CreateLessonDialog({
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-          {/* Course Selector */}
-          <div className="space-y-2">
-            <label htmlFor="course-select" className="text-sm font-medium">
-              Selecione o Curso *
-            </label>
-            <select
-              id="course-select"
-              value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
-              disabled={loading}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="">Selecione um curso...</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.title}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Video Upload Section */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                1. Selecione o Vídeo *
+            <div className="space-y-2">
+              <label htmlFor="course-select" className="text-sm font-medium">
+                Selecione o Curso *
               </label>
-            </div>
-            <VideoUpload
-              ref={videoUploadRef}
-              courseId={selectedCourseId}
-              manualUpload={true}
-            />
-            <p className="text-xs text-muted-foreground">
-              O upload será feito automaticamente ao criar a lição
-            </p>
-          </div>
-
-          {/* Lesson Info Section */}
-          <div className="space-y-4">
-            <label className="text-sm font-medium">
-              2. Informações da Lição *
-            </label>
-
-            {/* Title */}
-            <div className="grid gap-2">
-              <label htmlFor="title" className="text-sm font-medium text-muted-foreground">
-                Título *
-              </label>
-              <Input
-                id="title"
-                placeholder="Ex: Introdução ao Ethereum"
+              <select
+                id="course-select"
+                value={selectedCourseId}
+                onChange={(e) => setSelectedCourseId(e.target.value)}
                 disabled={loading}
-                {...register('title')}
-              />
-              {errors.title && (
-                <p className="text-sm text-destructive">{errors.title.message}</p>
-              )}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Selecione um curso...</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Description */}
-            <div className="grid gap-2">
-              <label htmlFor="description" className="text-sm font-medium text-muted-foreground">
-                Descrição Breve
-              </label>
-              <Input
-                id="description"
-                placeholder="Resumo da lição..."
-                disabled={loading}
-                {...register('description')}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  1. Selecione o Vídeo *
+                </label>
+              </div>
+              <VideoUpload
+                ref={videoUploadRef}
+                courseId={selectedCourseId}
+                manualUpload={true}
               />
-              {errors.description && (
-                <p className="text-sm text-destructive">{errors.description.message}</p>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="grid gap-2">
-              <label htmlFor="content" className="text-sm font-medium text-muted-foreground">
-                Conteúdo / Notas da Aula (Opcional)
-              </label>
-              <textarea
-                id="content"
-                placeholder="Material complementar, links, código, etc..."
-                disabled={loading}
-                rows={6}
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
-                {...register('content')}
-              />
-              {errors.content && (
-                <p className="text-sm text-destructive">{errors.content.message}</p>
-              )}
               <p className="text-xs text-muted-foreground">
-                Você pode usar HTML básico para formatação
+                O upload será feito automaticamente ao criar a lição
               </p>
             </div>
+
+            <div className="space-y-4">
+              <label className="text-sm font-medium">
+                2. Informações da Lição *
+              </label>
+
+              <div className="grid gap-2">
+                <label htmlFor="title" className="text-sm font-medium text-muted-foreground">
+                  Título *
+                </label>
+                <Input
+                  id="title"
+                  placeholder="Ex: Introdução ao Ethereum"
+                  disabled={loading}
+                  {...register('title')}
+                />
+                {errors.title && (
+                  <p className="text-sm text-destructive">{errors.title.message}</p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="description" className="text-sm font-medium text-muted-foreground">
+                  Descrição Breve
+                </label>
+                <Input
+                  id="description"
+                  placeholder="Resumo da lição..."
+                  disabled={loading}
+                  {...register('description')}
+                />
+                {errors.description && (
+                  <p className="text-sm text-destructive">{errors.description.message}</p>
+                )}
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="content" className="text-sm font-medium text-muted-foreground">
+                  Conteúdo / Notas da Aula (Opcional)
+                </label>
+                <textarea
+                  id="content"
+                  placeholder="Material complementar, links, código, etc..."
+                  disabled={loading}
+                  rows={6}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                  {...register('content')}
+                />
+                {errors.content && (
+                  <p className="text-sm text-destructive">{errors.content.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Você pode usar HTML básico para formatação
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
 
           <DialogFooter>
             <Button

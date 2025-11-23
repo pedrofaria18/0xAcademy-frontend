@@ -19,13 +19,6 @@ export function formatDate(date: string | Date): string {
   }).format(d);
 }
 
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(price);
-}
-
 export function calculateProgress(completed: number, total: number): number {
   if (total === 0) return 0;
   return Math.round((completed / total) * 100);

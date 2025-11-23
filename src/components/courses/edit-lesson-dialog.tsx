@@ -127,7 +127,6 @@ export function EditLessonDialog({
   };
 
   const handleClose = () => {
-    // Reset state
     videoUploadRef.current?.reset();
     reset();
     setCurrentVideoUrl('');
@@ -154,92 +153,87 @@ export function EditLessonDialog({
           </DialogHeader>
 
           {loadingLesson ? (
-          <div className="py-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Carregando lição...</p>
-          </div>
-        ) : (
-          <div className="space-y-6 py-4">
-            {/* Video Upload Section */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+            <div className="py-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Carregando lição...</p>
+            </div>
+          ) : (
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    Substituir Vídeo (Opcional)
+                  </label>
+                  {currentVideoUrl && (
+                    <span className="text-xs text-muted-foreground">
+                      Vídeo atual: {currentVideoUrl.substring(0, 20)}...
+                    </span>
+                  )}
+                </div>
+                <VideoUpload
+                  ref={videoUploadRef}
+                  courseId={courseId}
+                  lessonId={lessonId}
+                  manualUpload={true}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se selecionar um novo vídeo, ele será enviado ao salvar. Deixe em branco para manter o atual.
+                </p>
+              </div>
+
+              <div className="space-y-4">
                 <label className="text-sm font-medium">
-                  Substituir Vídeo (Opcional)
+                  Informações da Lição
                 </label>
-                {currentVideoUrl && (
-                  <span className="text-xs text-muted-foreground">
-                    Vídeo atual: {currentVideoUrl.substring(0, 20)}...
-                  </span>
-                )}
-              </div>
-              <VideoUpload
-                ref={videoUploadRef}
-                courseId={courseId}
-                lessonId={lessonId}
-                manualUpload={true}
-              />
-              <p className="text-xs text-muted-foreground">
-                Se selecionar um novo vídeo, ele será enviado ao salvar. Deixe em branco para manter o atual.
-              </p>
-            </div>
 
-            {/* Lesson Info Section */}
-            <div className="space-y-4">
-              <label className="text-sm font-medium">
-                Informações da Lição
-              </label>
+                <div className="grid gap-2">
+                  <label htmlFor="title" className="text-sm font-medium text-muted-foreground">
+                    Título *
+                  </label>
+                  <Input
+                    id="title"
+                    placeholder="Ex: Introdução ao Ethereum"
+                    disabled={loading}
+                    {...register('title')}
+                  />
+                  {errors.title && (
+                    <p className="text-sm text-destructive">{errors.title.message}</p>
+                  )}
+                </div>
 
-              {/* Title */}
-              <div className="grid gap-2">
-                <label htmlFor="title" className="text-sm font-medium text-muted-foreground">
-                  Título *
-                </label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Introdução ao Ethereum"
-                  disabled={loading}
-                  {...register('title')}
-                />
-                {errors.title && (
-                  <p className="text-sm text-destructive">{errors.title.message}</p>
-                )}
-              </div>
+                <div className="grid gap-2">
+                  <label htmlFor="description" className="text-sm font-medium text-muted-foreground">
+                    Descrição Breve
+                  </label>
+                  <Input
+                    id="description"
+                    placeholder="Resumo da lição..."
+                    disabled={loading}
+                    {...register('description')}
+                  />
+                  {errors.description && (
+                    <p className="text-sm text-destructive">{errors.description.message}</p>
+                  )}
+                </div>
 
-              {/* Description */}
-              <div className="grid gap-2">
-                <label htmlFor="description" className="text-sm font-medium text-muted-foreground">
-                  Descrição Breve
-                </label>
-                <Input
-                  id="description"
-                  placeholder="Resumo da lição..."
-                  disabled={loading}
-                  {...register('description')}
-                />
-                {errors.description && (
-                  <p className="text-sm text-destructive">{errors.description.message}</p>
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="grid gap-2">
-                <label htmlFor="content" className="text-sm font-medium text-muted-foreground">
-                  Conteúdo / Notas da Aula (Opcional)
-                </label>
-                <textarea
-                  id="content"
-                  placeholder="Material complementar, links, código, etc..."
-                  disabled={loading}
-                  rows={6}
-                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
-                  {...register('content')}
-                />
-                {errors.content && (
-                  <p className="text-sm text-destructive">{errors.content.message}</p>
-                )}
+                <div className="grid gap-2">
+                  <label htmlFor="content" className="text-sm font-medium text-muted-foreground">
+                    Conteúdo / Notas da Aula (Opcional)
+                  </label>
+                  <textarea
+                    id="content"
+                    placeholder="Material complementar, links, código, etc..."
+                    disabled={loading}
+                    rows={6}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                    {...register('content')}
+                  />
+                  {errors.content && (
+                    <p className="text-sm text-destructive">{errors.content.message}</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
           )}
 
           <DialogFooter>
