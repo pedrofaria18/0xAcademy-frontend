@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { useWeb3Auth } from '@/hooks/useWeb3Auth';
@@ -20,6 +20,18 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Course as APICourse, Lesson as APILesson } from '@/types/api';
+
+// Static skeleton items to avoid array recreation
+const SKELETON_ITEMS = Array.from({ length: 3 }, (_, i) => i);
+
+// Helper function outside component to avoid recreation on every render
+const formatDuration = (minutes: number | null | undefined): string => {
+  if (!minutes) return '0:00';
+  const totalSeconds = Math.round(minutes * 60);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 interface EnhancedLesson extends APILesson {
   is_preview: boolean;
@@ -44,22 +56,7 @@ export default function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
 
-  // Formata duração em minutos (decimal) para "MM:SS"
-  const formatDuration = (minutes: number | null | undefined): string => {
-    if (!minutes) return '0:00';
-    const totalSeconds = Math.round(minutes * 60);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  useEffect(() => {
-    if (courseId) {
-      loadCourse();
-    }
-  }, [courseId, isAuthenticated]);
-
-  const loadCourse = async () => {
+  const loadCourse = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -118,9 +115,15 @@ export default function CourseDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, isAuthenticated]);
 
-  const handleEnroll = async () => {
+  useEffect(() => {
+    if (courseId) {
+      loadCourse();
+    }
+  }, [courseId, loadCourse]);
+
+  const handleEnroll = useCallback(async () => {
     if (!isAuthenticated) {
       handleLogin();
       return;
@@ -139,15 +142,18 @@ export default function CourseDetailPage() {
     } finally {
       setEnrolling(false);
     }
-  };
+  }, [isAuthenticated, handleLogin, courseId, loadCourse]);
 
-  const handleStartLesson = (lessonId: string) => {
+  const handleStartLesson = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    const lessonId = e.currentTarget.dataset.lessonId;
+    if (!lessonId) return;
+
     if (!course?.is_enrolled) {
       toast.error('Você precisa se inscrever no curso primeiro');
       return;
     }
     router.push(`/courses/${courseId}/lessons/${lessonId}`);
-  };
+  }, [course?.is_enrolled, courseId, router]);
 
   if (loading) {
     return (
@@ -158,7 +164,7 @@ export default function CourseDetailPage() {
           <div className="container py-8">
             <div className="grid gap-8 lg:grid-cols-3">
               <div className="lg:col-span-2 space-y-4">
-                {[...Array(3)].map((_, i) => (
+                {SKELETON_ITEMS.map((i) => (
                   <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
                 ))}
               </div>
@@ -310,7 +316,8 @@ export default function CourseDetailPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleStartLesson(lesson.id)}
+                            data-lesson-id={lesson.id}
+                            onClick={handleStartLesson}
                           >
                             {lesson.is_completed ? 'Revisar' : 'Assistir'}
                           </Button>
@@ -363,7 +370,8 @@ export default function CourseDetailPage() {
                     <Button
                       className="w-full"
                       size="lg"
-                      onClick={() => handleStartLesson(course.lessons[0].id)}
+                      data-lesson-id={course.lessons[0]?.id}
+                      onClick={handleStartLesson}
                     >
                       <PlayCircle className="mr-2 h-5 w-5" />
                       Continuar Aprendendo

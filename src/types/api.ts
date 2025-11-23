@@ -105,14 +105,36 @@ export interface Certificate {
   };
 }
 
+/**
+ * Cloudflare Stream Video Status
+ */
+export type VideoStatus =
+  | 'queued'
+  | 'inprogress'
+  | 'ready'
+  | 'error'
+  | 'pendingupload';
+
+/**
+ * Video metadata structure from Cloudflare Stream
+ */
+export interface VideoMeta {
+  name?: string;
+  type?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+/**
+ * Video resource from Cloudflare Stream
+ */
 export interface Video {
   id: string;
   playbackUrl: string;
   thumbnail: string;
-  status: string;
+  status: VideoStatus;
   duration?: number;
   size?: number;
-  meta?: Record<string, any>;
+  meta?: VideoMeta;
 }
 
 export interface Pagination {

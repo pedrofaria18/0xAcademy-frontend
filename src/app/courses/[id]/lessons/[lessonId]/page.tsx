@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { coursesAPI } from '@/lib/api';
 import { Lesson } from '@/types/api';
+import { sanitizeHTML } from '@/lib/sanitize';
 import {
   Loader2,
   BookOpen,
@@ -21,6 +22,13 @@ export default function LessonPage() {
 
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Sanitize lesson content to prevent XSS attacks
+  // Must be called at top level before any conditional returns
+  const sanitizedContent = useMemo(
+    () => lesson?.content ? sanitizeHTML(lesson.content) : '',
+    [lesson?.content]
+  );
 
   useEffect(() => {
     loadLessonData();
@@ -42,9 +50,10 @@ export default function LessonPage() {
       }
       setLesson(currentLesson);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading lesson:', error);
-      if (error.response?.status === 403) {
+      const err = error as { response?: { status?: number } };
+      if (err.response?.status === 403) {
         toast.error('Você precisa estar matriculado neste curso');
         router.push(`/courses/${courseId}`);
       } else {
@@ -92,14 +101,10 @@ export default function LessonPage() {
     );
   }
 
-  console.log('Video ID:', lesson.video_url)
-
   // Construct Cloudflare Stream URL from videoId
   const videoUrl = lesson.video_url
     ? `https://customer-4yntlrebbkshe3nv.cloudflarestream.com/${lesson.video_url}/watch`
     : null;
-
-  console.log('Video URL:', videoUrl)
 
   return (
     <>
@@ -153,7 +158,7 @@ export default function LessonPage() {
               <CardContent>
                 <div
                   className="prose prose-sm dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: lesson.content }}
+                  dangerouslySetInnerHTML={{ __html: sanitizedContent }}
                 />
               </CardContent>
             </Card>

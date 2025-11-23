@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Header } from '@/components/layout/header';
 import { useWeb3Auth } from '@/hooks/useWeb3Auth';
 import { coursesAPI } from '@/lib/api';
@@ -9,8 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { CreateLessonDialog } from '@/components/courses/create-lesson-dialog';
-import { EditLessonDialog } from '@/components/courses/edit-lesson-dialog';
 import {
   BookOpen,
   Save,
@@ -36,6 +35,35 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { Course, Lesson } from '@/types/api';
+
+// Helper function outside component to avoid recreation on every render
+const formatDuration = (minutes: number | null | undefined): string => {
+  if (!minutes) return '0:00';
+  const totalSeconds = Math.round(minutes * 60);
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Lazy load dialogs for better performance
+ * Only loaded when user opens them
+ */
+const CreateLessonDialog = dynamic(
+  () => import('@/components/courses/create-lesson-dialog').then((mod) => ({ default: mod.CreateLessonDialog })),
+  {
+    loading: () => null,
+    ssr: false,
+  }
+);
+
+const EditLessonDialog = dynamic(
+  () => import('@/components/courses/edit-lesson-dialog').then((mod) => ({ default: mod.EditLessonDialog })),
+  {
+    loading: () => null,
+    ssr: false,
+  }
+);
 
 const CATEGORIES = [
   'Blockchain',
@@ -77,13 +105,7 @@ export default function EditCoursePage() {
   const [deleteLessonDialogOpen, setDeleteLessonDialogOpen] = useState(false);
   const [lessonToDelete, setLessonToDelete] = useState<string>('');
 
-  useEffect(() => {
-    if (isAuthenticated && courseId) {
-      loadCourseData();
-    }
-  }, [isAuthenticated, courseId]);
-
-  const loadCourseData = async () => {
+  const loadCourseData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -122,16 +144,22 @@ export default function EditCoursePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, user?.id, router]);
 
-  const handleChange = (
+  useEffect(() => {
+    if (isAuthenticated && courseId) {
+      loadCourseData();
+    }
+  }, [isAuthenticated, courseId, loadCourseData]);
+
+  const handleChange = useCallback((
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleSaveCourse = async () => {
+  const handleSaveCourse = useCallback(async () => {
     if (!formData.title.trim()) {
       toast.error('Título é obrigatório');
       return;
@@ -166,9 +194,9 @@ export default function EditCoursePage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [formData, courseId, loadCourseData]);
 
-  const handleTogglePublish = async () => {
+  const handleTogglePublish = useCallback(async () => {
     if (!courseData) return;
 
     try {
@@ -185,9 +213,9 @@ export default function EditCoursePage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [courseData, formData.is_published, courseId]);
 
-  const handleDeleteCourse = async () => {
+  const handleDeleteCourse = useCallback(async () => {
     try {
       setSaving(true);
       await coursesAPI.delete(courseId);
@@ -200,9 +228,9 @@ export default function EditCoursePage() {
       setSaving(false);
       setDeleteDialogOpen(false);
     }
-  };
+  }, [courseId, router]);
 
-  const handleDeleteLesson = async () => {
+  const handleDeleteLesson = useCallback(async () => {
     if (!lessonToDelete) return;
 
     try {
@@ -215,25 +243,16 @@ export default function EditCoursePage() {
       console.error('Error deleting lesson:', error);
       toast.error('Erro ao deletar lição');
     }
-  };
+  }, [lessonToDelete, courseId, loadCourseData]);
 
-  const handleEditLesson = (lessonId: string) => {
+  const handleEditLesson = useCallback((lessonId: string) => {
     setSelectedLessonId(lessonId);
     setEditLessonOpen(true);
-  };
+  }, []);
 
-  const handleViewAsStudent = () => {
+  const handleViewAsStudent = useCallback(() => {
     window.open(`/courses/${courseId}`, '_blank');
-  };
-
-  // Formata duração em minutos (decimal) para "MM:SS"
-  const formatDuration = (minutes: number | null | undefined): string => {
-    if (!minutes) return '0:00';
-    const totalSeconds = Math.round(minutes * 60);
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, [courseId]);
 
   if (!isAuthenticated) {
     return (

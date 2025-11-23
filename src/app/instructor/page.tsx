@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Header } from '@/components/layout/header';
 import { useWeb3Auth } from '@/hooks/useWeb3Auth';
 import { userAPI, coursesAPI } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CreateCourseDialog } from '@/components/courses/create-course-dialog';
 
 import {
   BookOpen,
@@ -17,6 +17,21 @@ import {
   Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// Static skeleton items to avoid array recreation
+const SKELETON_ITEMS = Array.from({ length: 3 }, (_, i) => i);
+
+/**
+ * Lazy load CreateCourseDialog for better performance
+ * Only loaded when user clicks "Criar Novo Curso"
+ */
+const CreateCourseDialog = dynamic(
+  () => import('@/components/courses/create-course-dialog').then((mod) => ({ default: mod.CreateCourseDialog })),
+  {
+    loading: () => null,
+    ssr: false,
+  }
+);
 
 interface InstructorCourse {
   id: string;
@@ -37,14 +52,7 @@ export default function InstructorPage() {
   const [loading, setLoading] = useState(true);
   const [createCourseOpen, setCreateCourseOpen] = useState(false);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadInstructorData();
-    }
-  }, [isAuthenticated]);
-
-
-  const loadInstructorData = async () => {
+  const loadInstructorData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -68,9 +76,15 @@ export default function InstructorPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleBecomeInstructor = async () => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadInstructorData();
+    }
+  }, [isAuthenticated, loadInstructorData]);
+
+  const handleBecomeInstructor = useCallback(async () => {
     try {
       setLoading(true);
       const response = await userAPI.becomeInstructor();
@@ -83,7 +97,7 @@ export default function InstructorPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -146,7 +160,7 @@ export default function InstructorPage() {
 
             {loading ? (
               <div className="grid gap-6">
-                {[...Array(3)].map((_, i) => (
+                {SKELETON_ITEMS.map((i) => (
                   <div
                     key={i}
                     className="h-32 rounded-lg bg-muted animate-pulse"

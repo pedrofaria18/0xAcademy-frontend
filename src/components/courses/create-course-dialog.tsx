@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,10 @@ import { Input } from '@/components/ui/input';
 import { coursesAPI } from '@/lib/api';
 import { Loader2, Plus, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  createCourseFormSchema,
+  type CreateCourseFormData,
+} from '@/lib/schemas';
 
 interface CreateCourseDialogProps {
   open: boolean;
@@ -39,53 +44,44 @@ export function CreateCourseDialog({
   onSuccess
 }: CreateCourseDialogProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: 'Blockchain',
-    price_usd: '0',
-    thumbnail_url: '',
-    is_published: false
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    watch,
+  } = useForm<CreateCourseFormData>({
+    resolver: zodResolver(createCourseFormSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      category: 'Blockchain',
+      price_usd: '0',
+      thumbnail_url: '',
+      is_published: false,
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isPublished = watch('is_published');
 
-    if (!formData.title.trim()) {
-      toast.error('Título é obrigatório');
-      return;
-    }
-
-    if (!formData.description.trim()) {
-      toast.error('Descrição é obrigatória');
-      return;
-    }
-
+  const onSubmit = async (data: CreateCourseFormData) => {
     try {
-      setLoading(true);
-
       const courseData = {
-        ...formData,
-        thumbnail_url: formData.thumbnail_url.trim() === '' ? undefined : formData.thumbnail_url.trim(),
-        price_usd: parseFloat(formData.price_usd) || 0,
-        is_published: formData.is_published
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        level: data.level,
+        tags: data.tags,
+        price_usd: parseFloat(data.price_usd) || 0,
+        thumbnail_url: data.thumbnail_url?.trim() === '' ? undefined : data.thumbnail_url?.trim(),
+        is_published: data.is_published || false,
       };
 
       const { course } = await coursesAPI.create(courseData);
 
       toast.success('Curso criado com sucesso!');
-
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        category: 'Blockchain',
-        price_usd: '0',
-        thumbnail_url: '',
-        is_published: false
-      });
-
+      reset();
       onOpenChange(false);
 
       if (onSuccess) {
@@ -94,27 +90,19 @@ export function CreateCourseDialog({
 
       router.push(`/instructor`);
       router.refresh();
-    } catch (error: any) {
-      console.error('Error creating course:', error);
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      console.error('Error creating course:', err);
       toast.error(
-        error.response?.data?.error || 'Erro ao criar curso. Tente novamente.'
+        err.response?.data?.error || 'Erro ao criar curso. Tente novamente.'
       );
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
             <DialogTitle>Criar Novo Curso</DialogTitle>
             <DialogDescription>
@@ -131,13 +119,13 @@ export function CreateCourseDialog({
               </label>
               <Input
                 id="title"
-                name="title"
                 placeholder="Ex: Introdução ao Solidity"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                disabled={loading}
+                disabled={isSubmitting}
+                {...register('title')}
               />
+              {errors.title && (
+                <p className="text-sm text-destructive">{errors.title.message}</p>
+              )}
             </div>
 
             {/* Description */}
@@ -147,15 +135,15 @@ export function CreateCourseDialog({
               </label>
               <textarea
                 id="description"
-                name="description"
                 placeholder="Descreva o que os alunos aprenderão neste curso..."
-                value={formData.description}
-                onChange={handleChange}
-                required
-                disabled={loading}
+                disabled={isSubmitting}
                 rows={4}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                {...register('description')}
               />
+              {errors.description && (
+                <p className="text-sm text-destructive">{errors.description.message}</p>
+              )}
             </div>
 
             {/* Category */}
@@ -165,11 +153,9 @@ export function CreateCourseDialog({
               </label>
               <select
                 id="category"
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                disabled={loading}
+                disabled={isSubmitting}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                {...register('category')}
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat} value={cat}>
@@ -177,6 +163,9 @@ export function CreateCourseDialog({
                   </option>
                 ))}
               </select>
+              {errors.category && (
+                <p className="text-sm text-destructive">{errors.category.message}</p>
+              )}
             </div>
 
             {/* Price */}
@@ -186,15 +175,14 @@ export function CreateCourseDialog({
               </label>
               <Input
                 id="price_usd"
-                name="price_usd"
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
                 placeholder="0.00"
-                value={formData.price_usd}
-                onChange={handleChange}
-                disabled={loading}
+                disabled={isSubmitting}
+                {...register('price_usd')}
               />
+              {errors.price_usd && (
+                <p className="text-sm text-destructive">{errors.price_usd.message}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Deixe em 0 para criar um curso gratuito
               </p>
@@ -207,13 +195,14 @@ export function CreateCourseDialog({
               </label>
               <Input
                 id="thumbnail_url"
-                name="thumbnail_url"
                 type="url"
                 placeholder="https://..."
-                value={formData.thumbnail_url}
-                onChange={handleChange}
-                disabled={loading}
+                disabled={isSubmitting}
+                {...register('thumbnail_url')}
               />
+              {errors.thumbnail_url && (
+                <p className="text-sm text-destructive">{errors.thumbnail_url.message}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Você pode adicionar uma imagem depois
               </p>
@@ -223,17 +212,17 @@ export function CreateCourseDialog({
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  {formData.is_published ? (
+                  {isPublished ? (
                     <Eye className="h-4 w-4 text-green-600" />
                   ) : (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />
                   )}
                   <label htmlFor="is_published" className="text-sm font-medium">
-                    {formData.is_published ? 'Publicar Curso' : 'Salvar como Rascunho'}
+                    {isPublished ? 'Publicar Curso' : 'Salvar como Rascunho'}
                   </label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {formData.is_published
+                  {isPublished
                     ? 'O curso ficará visível para todos em "Explorar"'
                     : 'O curso ficará privado até você publicá-lo'}
                 </p>
@@ -241,10 +230,9 @@ export function CreateCourseDialog({
               <input
                 type="checkbox"
                 id="is_published"
-                checked={formData.is_published}
-                onChange={(e) => setFormData(prev => ({ ...prev, is_published: e.target.checked }))}
-                disabled={loading}
+                disabled={isSubmitting}
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                {...register('is_published')}
               />
             </div>
           </div>
@@ -254,12 +242,12 @@ export function CreateCourseDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={loading}
+              disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Criando...

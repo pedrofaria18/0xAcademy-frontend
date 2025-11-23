@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Header } from '@/components/layout/header';
 import { coursesAPI } from '@/lib/api';
 import { CourseCard } from '@/components/courses/course-card';
@@ -10,6 +10,9 @@ import { Search, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Course } from '@/types/api';
 
+// Static skeleton items to avoid array recreation on every render
+const SKELETON_ITEMS = Array.from({ length: 8 }, (_, i) => i);
+
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,17 +20,13 @@ export default function CoursesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    loadCourses();
-  }, [page, search]);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await coursesAPI.list({ 
-        page, 
-        limit: 12, 
-        search: search || undefined 
+      const data = await coursesAPI.list({
+        page,
+        limit: 12,
+        search: search || undefined
       });
       setCourses(data.courses);
       setTotalPages(data.pagination.pages);
@@ -36,13 +35,25 @@ export default function CoursesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
+
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     loadCourses();
-  };
+  }, [loadCourses]);
+
+  const handlePrevPage = useCallback(() => {
+    setPage(p => Math.max(1, p - 1));
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setPage(p => Math.min(totalPages, p + 1));
+  }, [totalPages]);
 
   return (
     <>
@@ -81,7 +92,7 @@ export default function CoursesPage() {
           {/* Courses Grid */}
           {loading ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {[...Array(8)].map((_, i) => (
+              {SKELETON_ITEMS.map((i) => (
                 <div
                   key={i}
                   className="h-64 rounded-lg bg-muted animate-pulse"
@@ -105,7 +116,7 @@ export default function CoursesPage() {
             <div className="mt-8 flex justify-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={handlePrevPage}
                 disabled={page === 1}
               >
                 Anterior
@@ -115,7 +126,7 @@ export default function CoursesPage() {
               </span>
               <Button
                 variant="outline"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                onClick={handleNextPage}
                 disabled={page === totalPages}
               >
                 Próxima

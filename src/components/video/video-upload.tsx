@@ -12,7 +12,7 @@ interface VideoUploadProps {
   lessonId?: string;
   onUploadComplete?: (videoId: string) => void;
   onUploadStart?: () => void;
-  manualUpload?: boolean; // Se true, não mostra botão de upload - upload é controlado externamente
+  manualUpload?: boolean;
 }
 
 export interface VideoUploadRef {
@@ -37,9 +37,16 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
   const [lessonId, setLessonIdState] = useState<string | undefined>(initialLessonId);
   const [videoDurationSeconds, setVideoDurationSeconds] = useState<number | null>(null);
 
-  console.log(status)
+  // Helper para separar nome e extensão
+  const getFileNameParts = (filename: string) => {
+    const lastDotIndex = filename.lastIndexOf('.');
+    if (lastDotIndex === -1) return { name: filename, ext: '' };
+    return {
+      name: filename.substring(0, lastDotIndex),
+      ext: filename.substring(lastDotIndex)
+    };
+  };
 
-  // Formata duração em segundos para "MM:SS"
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -49,13 +56,11 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      // Validate file type
       if (!selectedFile.type.startsWith('video/')) {
         toast.error('Por favor, selecione um arquivo de vídeo');
         return;
       }
 
-      // Validate file size (max 2GB)
       const maxSize = 2 * 1024 * 1024 * 1024; // 2GB
       if (selectedFile.size > maxSize) {
         toast.error('Arquivo muito grande (máximo 2GB)');
@@ -66,7 +71,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       setStatus('idle');
       setProgress(0);
 
-      // Extract video duration
       const videoElement = document.createElement('video');
       videoElement.preload = 'metadata';
 
@@ -104,66 +108,49 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
         onUploadStart();
       }
 
-      // Step 1: Get upload URL from backend
       const { uploadURL, videoId: newVideoId } = await videoAPI.getUploadUrl(
         courseId,
         lessonId
       );
 
-      // Step 2: Upload file to Cloudflare Stream
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
-        // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            // Limita a 95% durante o upload, 100% só quando receber a resposta
             const percent = Math.min((e.loaded / e.total) * 95, 95);
             setProgress(percent);
           }
         });
 
-        // Handle successful upload
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            setProgress(100); // Agora sim, 100% quando a resposta é recebida
+            setProgress(100);
             resolve();
           } else {
             reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
           }
         });
 
-        // Handle upload errors
         xhr.addEventListener('error', () => {
           reject(new Error('Upload failed - Network error'));
         });
 
-        // Handle upload timeout
         xhr.addEventListener('timeout', () => {
           reject(new Error('Upload failed - Timeout'));
         });
 
-        // Configure request
         xhr.open('POST', uploadURL);
-
-        // Set timeout to 10 minutes for large files
         xhr.timeout = 10 * 60 * 1000;
 
-        // Create FormData and append file
-        // Cloudflare Stream expects the file as 'file' field in multipart/form-data
         const formData = new FormData();
         formData.append('file', file);
-
-        // Send FormData (browser automatically sets Content-Type with boundary)
         xhr.send(formData);
       });
 
-      // Step 3: Upload complete, now processing
       setStatus('processing');
       toast.success('Upload completo! O vídeo está sendo processado...');
 
-      // Step 4: Poll for video status (optional)
-      // The webhook will update the lesson when ready, but we can poll to show immediate feedback
       if (onUploadComplete && newVideoId) {
         onUploadComplete(newVideoId);
       }
@@ -186,7 +173,6 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
     setVideoDurationSeconds(null);
   };
 
-  // Expor métodos para controle externo
   useImperativeHandle(ref, () => ({
     startUpload: async () => {
       if (!file) {
@@ -203,22 +189,16 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
           onUploadStart();
         }
 
-        // Step 1: Get upload URL from backend
-        console.log('Uploading video with lessonId:', lessonId);
         const { uploadURL, videoId: newVideoId } = await videoAPI.getUploadUrl(
           courseId,
           lessonId
         );
 
-        console.log('Got upload URL for video:', newVideoId);
-
-        // Step 2: Upload file to Cloudflare Stream
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
 
           xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
-              // Limita a 95% durante o upload, 100% só quando receber a resposta
               const percent = Math.min((e.loaded / e.total) * 95, 95);
               setProgress(percent);
             }
@@ -226,7 +206,7 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
 
           xhr.addEventListener('load', () => {
             if (xhr.status >= 200 && xhr.status < 300) {
-              setProgress(100); // Agora sim, 100% quando a resposta é recebida
+              setProgress(100);
               resolve();
             } else {
               reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
@@ -300,30 +280,37 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
             </div>
           </label>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 w-full max-w-full overflow-hidden">
             {/* File Info */}
-            <div className="flex items-start justify-between gap-4 text-left">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div className="rounded-lg bg-primary/10 p-2 flex-shrink-0">
-                  {status === 'success' && (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  )}
-                  {status === 'error' && (
-                    <XCircle className="h-5 w-5 text-red-500" />
-                  )}
-                  {(status === 'idle' || status === 'uploading' || status === 'processing') && (
-                    <Film className="h-5 w-5 text-primary" />
-                  )}
+            <div className="flex items-start gap-3 w-full max-w-full">
+              {/* Icon Wrapper */}
+              <div className="rounded-lg bg-primary/10 p-2 flex-shrink-0">
+                {status === 'success' && (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                )}
+                {status === 'error' && (
+                  <XCircle className="h-5 w-5 text-red-500" />
+                )}
+                {(status === 'idle' || status === 'uploading' || status === 'processing') && (
+                  <Film className="h-5 w-5 text-primary" />
+                )}
+              </div>
+
+              {/* Text Info Wrapper - A mágica do Grid acontece aqui */}
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-0.5 w-full" title={file.name}>
+                  <span className="truncate font-medium text-sm block">
+                    {getFileNameParts(file.name).name}
+                  </span>
+                  <span className="font-medium text-sm text-muted-foreground flex-shrink-0 whitespace-nowrap">
+                    {getFileNameParts(file.name).ext}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.size)}
-                    {videoDurationSeconds && ` • ${formatDuration(videoDurationSeconds)}`}
-                  </p>
-                </div>
+                
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {formatFileSize(file.size)}
+                  {videoDurationSeconds && ` • ${formatDuration(videoDurationSeconds)}`}
+                </p>
               </div>
             </div>
 
@@ -347,7 +334,7 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
 
             {/* Action Buttons */}
             {!manualUpload && (
-              <div className="flex gap-2 justify-center">
+              <div className="flex gap-2 justify-center pt-2">
                 {status === 'idle' && (
                   <>
                     <Button
@@ -379,7 +366,7 @@ export const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
             )}
 
             {manualUpload && status === 'idle' && file && (
-              <div className="flex justify-center">
+              <div className="flex justify-center pt-2">
                 <Button
                   variant="outline"
                   onClick={handleReset}

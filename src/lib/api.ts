@@ -31,9 +31,18 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Read from Zustand persist storage (0xacademy-auth key)
+    const authStorage = localStorage.getItem('0xacademy-auth');
+    if (authStorage) {
+      try {
+        const parsed = JSON.parse(authStorage);
+        const token = parsed.state?.token;
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error('Error parsing auth storage:', error);
+      }
     }
     return config;
   },
@@ -46,7 +55,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      // Clear Zustand persist storage on unauthorized
+      localStorage.removeItem('0xacademy-auth');
       window.location.href = '/';
       toast.error('Sessão expirada. Por favor, faça login novamente.');
     } else if (error.response?.data?.message) {
@@ -77,7 +87,8 @@ export const authAPI = {
 
   logout: async (): Promise<void> => {
     await api.post('/auth/logout');
-    localStorage.removeItem('token');
+    // Zustand persist will handle storage cleanup via store.logout()
+    // No need to manually remove here as it would conflict with Zustand's persistence
   },
 };
 

@@ -21,7 +21,9 @@ const nextConfig = {
       },
     ],
   },
+  // Turbopack configuration (Next.js 16+)
   turbopack: {},
+  // Webpack fallback configuration
   webpack: (config) => {
     config.resolve.fallback = { fs: false, net: false, tls: false };
     config.externals.push('pino-pretty', 'lokijs', 'encoding');

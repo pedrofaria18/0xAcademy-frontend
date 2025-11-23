@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -16,6 +18,7 @@ import { coursesAPI } from '@/lib/api';
 import { Lesson } from '@/types/api';
 import { Loader2, Save, Film } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { editLessonFormSchema, type EditLessonFormData } from '@/lib/schemas';
 
 interface EditLessonDialogProps {
   open: boolean;
@@ -35,12 +38,21 @@ export function EditLessonDialog({
   const videoUploadRef = useRef<VideoUploadRef>(null);
   const [loading, setLoading] = useState(false);
   const [loadingLesson, setLoadingLesson] = useState(true);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    content: ''
-  });
   const [currentVideoUrl, setCurrentVideoUrl] = useState<string | undefined>('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<EditLessonFormData>({
+    resolver: zodResolver(editLessonFormSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      content: '',
+    },
+  });
 
   useEffect(() => {
     if (open && lessonId) {
@@ -55,10 +67,10 @@ export function EditLessonDialog({
       const lesson = lessons.find((l: Lesson) => l.id === lessonId);
 
       if (lesson) {
-        setFormData({
+        reset({
           title: lesson.title,
           description: lesson.description || '',
-          content: lesson.content || ''
+          content: lesson.content || '',
         });
         setCurrentVideoUrl(lesson.video_url);
       }
@@ -70,19 +82,20 @@ export function EditLessonDialog({
     }
   };
 
-  const handleUpdateLesson = async () => {
-    if (!formData.title.trim()) {
-      toast.error('Título é obrigatório');
-      return;
-    }
-
+  const onSubmit = async (data: EditLessonFormData) => {
     try {
       setLoading(true);
 
-      const updateData: any = {
-        title: formData.title,
-        description: formData.description,
-        content: formData.content,
+      const updateData: {
+        title: string;
+        description?: string;
+        content?: string;
+        video_url?: string;
+        duration_minutes?: number;
+      } = {
+        title: data.title,
+        description: data.description || undefined,
+        content: data.content || undefined,
       };
 
       // Only upload and update video if a new file was selected
@@ -102,31 +115,21 @@ export function EditLessonDialog({
 
       toast.success('Lição atualizada com sucesso!');
       handleClose();
-    } catch (error: any) {
-      console.error('Error updating lesson:', error);
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      console.error('Error updating lesson:', err);
       toast.error(
-        error.response?.data?.error || 'Erro ao atualizar lição. Tente novamente.'
+        err.response?.data?.error || 'Erro ao atualizar lição. Tente novamente.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleClose = () => {
     // Reset state
     videoUploadRef.current?.reset();
-    setFormData({
-      title: '',
-      description: '',
-      content: ''
-    });
+    reset();
     setCurrentVideoUrl('');
 
     onOpenChange(false);
@@ -139,17 +142,18 @@ export function EditLessonDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Film className="h-5 w-5" />
-            Editar Lição
-          </DialogTitle>
-          <DialogDescription>
-            Atualize as informações da lição. Você pode substituir o vídeo fazendo um novo upload.
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Film className="h-5 w-5" />
+              Editar Lição
+            </DialogTitle>
+            <DialogDescription>
+              Atualize as informações da lição. Você pode substituir o vídeo fazendo um novo upload.
+            </DialogDescription>
+          </DialogHeader>
 
-        {loadingLesson ? (
+          {loadingLesson ? (
           <div className="py-8 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Carregando lição...</p>
@@ -192,13 +196,13 @@ export function EditLessonDialog({
                 </label>
                 <Input
                   id="title"
-                  name="title"
                   placeholder="Ex: Introdução ao Ethereum"
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
                   disabled={loading}
+                  {...register('title')}
                 />
+                {errors.title && (
+                  <p className="text-sm text-destructive">{errors.title.message}</p>
+                )}
               </div>
 
               {/* Description */}
@@ -208,12 +212,13 @@ export function EditLessonDialog({
                 </label>
                 <Input
                   id="description"
-                  name="description"
                   placeholder="Resumo da lição..."
-                  value={formData.description}
-                  onChange={handleChange}
                   disabled={loading}
+                  {...register('description')}
                 />
+                {errors.description && (
+                  <p className="text-sm text-destructive">{errors.description.message}</p>
+                )}
               </div>
 
               {/* Content */}
@@ -223,45 +228,47 @@ export function EditLessonDialog({
                 </label>
                 <textarea
                   id="content"
-                  name="content"
                   placeholder="Material complementar, links, código, etc..."
-                  value={formData.content}
-                  onChange={handleChange}
                   disabled={loading}
                   rows={6}
                   className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                  {...register('content')}
                 />
+                {errors.content && (
+                  <p className="text-sm text-destructive">{errors.content.message}</p>
+                )}
               </div>
             </div>
           </div>
-        )}
+          )}
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleUpdateLesson}
-            disabled={loading || loadingLesson}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar Alterações
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || loadingLesson}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar Alterações
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

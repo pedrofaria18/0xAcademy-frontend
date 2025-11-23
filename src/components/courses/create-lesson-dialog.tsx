@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +17,7 @@ import { VideoUpload, VideoUploadRef } from '@/components/video/video-upload';
 import { coursesAPI, userAPI } from '@/lib/api';
 import { Loader2, Plus, Film } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { createLessonFormSchema, type CreateLessonFormData } from '@/lib/schemas';
 
 interface CreateLessonDialogProps {
   open: boolean;
@@ -36,10 +39,19 @@ export function CreateLessonDialog({
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<InstructorCourse[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    content: ''
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<CreateLessonFormData>({
+    resolver: zodResolver(createLessonFormSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      content: '',
+    },
   });
 
   useEffect(() => {
@@ -64,14 +76,9 @@ export function CreateLessonDialog({
     }
   };
 
-  const handleCreateLesson = async () => {
+  const onSubmit = async (data: CreateLessonFormData) => {
     if (!selectedCourseId) {
       toast.error('Selecione um curso primeiro');
-      return;
-    }
-
-    if (!formData.title.trim()) {
-      toast.error('Título é obrigatório');
       return;
     }
 
@@ -88,7 +95,9 @@ export function CreateLessonDialog({
 
       // Primeiro cria a lição sem o vídeo
       const { lesson } = await coursesAPI.createLesson(selectedCourseId, {
-        ...formData,
+        title: data.title,
+        description: data.description || undefined,
+        content: data.content || undefined,
         duration_minutes: videoDuration || undefined,
       });
 
@@ -111,31 +120,21 @@ export function CreateLessonDialog({
 
       toast.success('Lição criada! O vídeo será processado em alguns instantes.');
       handleClose();
-    } catch (error: any) {
-      console.error('Error creating lesson:', error);
+    } catch (error) {
+      const err = error as { response?: { data?: { error?: string } }; message?: string };
+      console.error('Error creating lesson:', err);
       toast.error(
-        error.response?.data?.error || 'Erro ao criar lição. Tente novamente.'
+        err.response?.data?.error || 'Erro ao criar lição. Tente novamente.'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleClose = () => {
     // Reset state
     videoUploadRef.current?.reset();
-    setFormData({
-      title: '',
-      description: '',
-      content: ''
-    });
+    reset();
     if (courses.length > 0) {
       setSelectedCourseId(courses[0].id);
     }
@@ -150,18 +149,18 @@ export function CreateLessonDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Film className="h-5 w-5" />
-            Criar Nova Lição
-          </DialogTitle>
-          <DialogDescription>
-            'Selecione o curso, '
-            Escolha o vídeo e preencha as informações. O upload será feito ao clicar em criar.
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Film className="h-5 w-5" />
+              Criar Nova Lição
+            </DialogTitle>
+            <DialogDescription>
+              Selecione o curso, escolha o vídeo e preencha as informações. O upload será feito ao clicar em criar.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6 py-4">
+          <div className="space-y-6 py-4">
           {/* Course Selector */}
           <div className="space-y-2">
             <label htmlFor="course-select" className="text-sm font-medium">
@@ -187,7 +186,7 @@ export function CreateLessonDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">
-                '1'. Selecione o Vídeo *
+                1. Selecione o Vídeo *
               </label>
             </div>
             <VideoUpload
@@ -203,7 +202,7 @@ export function CreateLessonDialog({
           {/* Lesson Info Section */}
           <div className="space-y-4">
             <label className="text-sm font-medium">
-              '2'. Informações da Lição *
+              2. Informações da Lição *
             </label>
 
             {/* Title */}
@@ -213,13 +212,13 @@ export function CreateLessonDialog({
               </label>
               <Input
                 id="title"
-                name="title"
                 placeholder="Ex: Introdução ao Ethereum"
-                value={formData.title}
-                onChange={handleChange}
-                required
                 disabled={loading}
+                {...register('title')}
               />
+              {errors.title && (
+                <p className="text-sm text-destructive">{errors.title.message}</p>
+              )}
             </div>
 
             {/* Description */}
@@ -229,12 +228,13 @@ export function CreateLessonDialog({
               </label>
               <Input
                 id="description"
-                name="description"
                 placeholder="Resumo da lição..."
-                value={formData.description}
-                onChange={handleChange}
                 disabled={loading}
+                {...register('description')}
               />
+              {errors.description && (
+                <p className="text-sm text-destructive">{errors.description.message}</p>
+              )}
             </div>
 
             {/* Content */}
@@ -244,14 +244,15 @@ export function CreateLessonDialog({
               </label>
               <textarea
                 id="content"
-                name="content"
                 placeholder="Material complementar, links, código, etc..."
-                value={formData.content}
-                onChange={handleChange}
                 disabled={loading}
                 rows={6}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                {...register('content')}
               />
+              {errors.content && (
+                <p className="text-sm text-destructive">{errors.content.message}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Você pode usar HTML básico para formatação
               </p>
@@ -259,32 +260,33 @@ export function CreateLessonDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleCreateLesson}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Fazendo Upload e Criando...
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Fazer Upload e Criar Lição
-              </>
-            )}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Fazendo Upload e Criando...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Fazer Upload e Criar Lição
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
