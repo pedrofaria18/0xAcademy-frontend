@@ -52,7 +52,9 @@ export function CreateCourseDialog({
     reset,
     watch,
   } = useForm<CreateCourseFormData>({
-    resolver: zodResolver(createCourseFormSchema),
+    resolver: zodResolver(createCourseFormSchema) as any,
+    mode: 'onChange',
+    reValidateMode: 'onChange',
     defaultValues: {
       title: '',
       description: '',
@@ -109,7 +111,8 @@ export function CreateCourseDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">       
+          <div className="grid gap-4 py-4">
+            {/* Title */}
             <div className="grid gap-2">
               <label htmlFor="title" className="text-sm font-medium">
                 Título do Curso *
@@ -125,6 +128,7 @@ export function CreateCourseDialog({
               )}
             </div>
 
+            {/* Description */}
             <div className="grid gap-2">
               <label htmlFor="description" className="text-sm font-medium">
                 Descrição *
@@ -142,6 +146,7 @@ export function CreateCourseDialog({
               )}
             </div>
 
+            {/* Category */}
             <div className="grid gap-2">
               <label htmlFor="category" className="text-sm font-medium">
                 Categoria
@@ -163,6 +168,7 @@ export function CreateCourseDialog({
               )}
             </div>
 
+            {/* Thumbnail URL */}
             <div className="grid gap-2">
               <label htmlFor="thumbnail_url" className="text-sm font-medium">
                 URL da Thumbnail (Opcional)
@@ -177,8 +183,12 @@ export function CreateCourseDialog({
               {errors.thumbnail_url && (
                 <p className="text-sm text-destructive">{errors.thumbnail_url.message}</p>
               )}
+              <p className="text-xs text-muted-foreground">
+                Você pode adicionar uma imagem depois
+              </p>
             </div>
 
+            {/* Publish Status */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">

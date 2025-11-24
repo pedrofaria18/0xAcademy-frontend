@@ -46,7 +46,8 @@ export function CreateLessonDialog({
     formState: { errors },
     reset,
   } = useForm<CreateLessonFormData>({
-    resolver: zodResolver(createLessonFormSchema),
+    resolver: zodResolver(createLessonFormSchema) as any,
+    mode: 'onChange',
     defaultValues: {
       title: '',
       description: '',
